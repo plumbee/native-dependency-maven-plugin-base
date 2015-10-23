@@ -15,20 +15,24 @@
  */
 package com.yelbota.plugins.nd;
 
-import org.sonatype.aether.spi.connector.ArtifactDownload;
 import com.yelbota.plugins.nd.utils.UnpackMethod;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.logging.Log;
+import org.sonatype.aether.spi.connector.ArtifactDownload;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
 
 /**
  * @author Aleksey Fomkin
  */
 public class UnpackHelper {
+
+    public static final String UNPACKED_COMPLETED_FLAG_FILE = "unpack-completed.flag";
 
     /**
      * @author Aleksey Fomkin
@@ -47,65 +51,79 @@ public class UnpackHelper {
     //-------------------------------------------------------------------------
 
     public void unpack(File directory, Artifact artifact,
-                       Map<String, UnpackMethod> unpackMethods) throws UnpackHelperException {
-
+                       Map<String, UnpackMethod> unpackMethods) throws MojoFailureException {
         unpack(directory, artifact, unpackMethods, null);
     }
 
     public void unpack(File directory, Artifact artifact,
                        Map<String, UnpackMethod> unpackMethods,
-                       Log log) throws UnpackHelperException {
-        unpack(directory, artifact.getType(), artifact.getFile(), unpackMethods, log);
+                       Log log) throws MojoFailureException {
+        unpack(directory, artifact.getFile(), getUnpackMethod(artifact.getType(), unpackMethods, log), log);
     }
 
     public void unpack(File directory, ArtifactDownload artifactDownload,
-                       Map<String, UnpackMethod> unpackMethods) throws UnpackHelperException {
+                       Map<String, UnpackMethod> unpackMethods) throws MojoFailureException {
 
         unpack(directory, artifactDownload, unpackMethods, null);
     }
 
     public void unpack(File directory, ArtifactDownload artifactDownload,
                        Map<String, UnpackMethod> unpackMethods,
-                       Log log) throws UnpackHelperException {
+                       Log log) throws MojoFailureException {
         org.sonatype.aether.artifact.Artifact artifact = artifactDownload.getArtifact();
         if (artifact != null) {
-            unpack(directory, artifact.getExtension(), artifactDownload.getFile(), unpackMethods, log);
+            unpack(directory, artifactDownload.getFile(), getUnpackMethod(artifact.getExtension(), unpackMethods, log), log);
         } else {
-            new MojoFailureException(artifactDownload + " has no valid artifact reference.");
+            throw new MojoFailureException(artifactDownload + " has no valid artifact reference.");
         }
+    }
+
+    private UnpackMethod getUnpackMethod(String type, Map<String, UnpackMethod> unpackMethodMap, Log log) throws MojoFailureException {
+        if (log != null) log.info("getting method for artifact type " + type);
+        UnpackMethod unpackMethod = unpackMethodMap.get(type);
+        if (unpackMethod == null) {
+            throw new MojoFailureException(String.format("unknown type: %s", type));
+        }
+        return unpackMethod;
     }
 
     /**
      * Unpack `artifact` to `directory`.
      * @throws UnpackHelperException
      */
-    private void unpack(File directory, String artifactType, File artifactFile,
-                       Map<String, UnpackMethod> unpackMethods,
-                       Log log) throws UnpackHelperException {
+    private void unpack(File directory, File artifactFile,
+                        UnpackMethod unpackMethod,
+                        Log log) throws MojoFailureException {
 
-        if (directory.exists()) {
-            if (log != null) log.info("dir '"+directory+"' exists");
-
-            if (directory.isDirectory()) {
-                if (log != null) log.info("already unpacked?");
-                logAlreadyUnpacked();
-            } else {
-                new MojoFailureException(directory.getAbsolutePath() + ", which must be directory for unpacking, now is file");
+        if (!directory.exists()) {
+            if (log != null) log.info("dir '" + directory + "' does not exist");
+            if (!directory.mkdirs()) {
+                throw new MojoFailureException(String.format("could not create directory: %s", directory.getAbsolutePath()));
             }
+        }
+
+        if (!directory.isDirectory()) {
+            throw new MojoFailureException(directory.getAbsolutePath() + ", which must be directory for unpacking, now is file");
+        }
+
+        if (Files.exists(Paths.get(directory.getAbsolutePath(), UNPACKED_COMPLETED_FLAG_FILE))) {
+            if (log != null) log.info("already unpacked?");
+            logAlreadyUnpacked();
         } else {
-            if (log != null) log.info("dir '"+directory+"' does not exist");
-            try {
-                logUnpacking();
-                directory.mkdirs();
-                if (log != null) log.info("getting method for artifact type " + artifactType);
-                UnpackMethod unpackMethod = unpackMethods.get(artifactType);
-                if (log != null) log.info("artifact file: " + artifactFile);
-                unpackMethod.unpack(artifactFile, directory, log);
-            } catch (IOException e) {
-                throw new UnpackHelperException("Can't unpack " + artifactFile, e);
-            } catch (UnpackMethod.UnpackMethodException e) {
-                throw new UnpackHelperException("Can't unpack " + artifactFile, e);
-            }
+            tryUnpacking(directory, artifactFile, unpackMethod, log);
+        }
+    }
+
+    private void tryUnpacking(File directory, File artifactFile, UnpackMethod unpackMethod, Log log) throws UnpackHelperException {
+        try {
+            logUnpacking();
+            if (log != null) log.info("artifact file: " + artifactFile);
+            unpackMethod.unpack(artifactFile, directory, log);
+            Files.createFile(Paths.get(directory.getAbsolutePath(), UNPACKED_COMPLETED_FLAG_FILE));
+        } catch (IOException e) {
+            throw new UnpackHelperException("Can't unpack " + artifactFile, e);
+        } catch (UnpackMethod.UnpackMethodException e) {
+            throw new UnpackHelperException("Can't unpack " + artifactFile, e);
         }
     }
 
