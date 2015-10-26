@@ -2,6 +2,12 @@
 
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>com.plumbee</groupId>
+        <artifactId>BasePom</artifactId>
+        <version>3.9</version>
+    </parent>
+
     <groupId>com.yelbota.plugins</groupId>
     <artifactId>native-dependency-maven-plugin-base</artifactId>
     <packaging>jar</packaging>
