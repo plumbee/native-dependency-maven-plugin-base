@@ -117,19 +117,4 @@
         </dependency>
     </dependencies>
 
-    <distributionManagement>
-        <repository>
-            <!-- I know, I know! -->
-            <id>yelbota-dropbox-repository</id>
-            <url>file:///Users/yelbota/Dropbox/Public/maven</url>
-        </repository>
-    </distributionManagement>
-
-    <scm>
-        <connection>scm:git:git@github.com:yelbota/native-dependency-maven-plugin-base.git</connection>
-        <url>scm:git:git@github.com:yelbota/native-dependency-maven-plugin-base.git</url>
-        <developerConnection>scm:git:git@github.com:yelbota/native-dependency-maven-plugin-base.git
-        </developerConnection>
-    </scm>
-
 </project>
