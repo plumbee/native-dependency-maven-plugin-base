@@ -5,13 +5,13 @@
     <parent>
         <groupId>com.plumbee</groupId>
         <artifactId>BasePom</artifactId>
-        <version>3.82</version>
+        <version>3.83</version>
     </parent>
 
     <groupId>com.yelbota.plugins</groupId>
     <artifactId>native-dependency-maven-plugin-base</artifactId>
     <packaging>jar</packaging>
-    <version>1.1-PLUMBEE-75</version>
+    <version>1.1-PLUMBEE-76</version>
 
     <name>Native dependency maven plugin base</name>
     <description>Plugin base for downloading and unpacking native dependencies</description>
